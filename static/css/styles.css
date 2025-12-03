@@ -49,6 +49,23 @@ input:focus, select:focus { border-color: #93c5fd; }
 .system { text-align: center; color: #6b7280; font-size: 13px; }
 .bot { align-items: center; }
 .bubble iframe { width: 400px; height: 400px; border: 0; border-radius: 8px; }
+.music-card { display: flex; flex-direction: column; gap: 8px; width: 320px; }
+.music-cover { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; }
+.music-info { display: flex; flex-direction: column; gap: 2px; }
+.music-title { font-size: 14px; font-weight: 600; color: #111827; }
+.music-singer { font-size: 12px; color: #6b7280; }
+.music-player { width: 100%; }
+.weather-card { display: flex; flex-direction: column; gap: 8px; width: 360px; }
+.weather-header { font-size: 14px; font-weight: 600; color: #111827; }
+.weather-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.weather-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; display: grid; grid-template-columns: 1fr; gap: 2px; }
+.w-date { font-size: 12px; color: #374151; font-weight: 600; }
+.w-temp { font-size: 12px; color: #111827; }
+.w-weather, .w-wind, .w-aq { font-size: 12px; color: #6b7280; }
+.news-card { display: flex; align-items: center; gap: 8px; width: 360px; }
+.news-title { font-size: 14px; font-weight: 600; color: #1f2937; text-decoration: none; }
+.news-title:hover { text-decoration: underline; }
+.news-hot { font-size: 12px; color: #6b7280; margin-left: auto; }
 
 @media (max-width: 640px) {
   .chat-wrap { width: 100%; }

@@ -27,13 +27,37 @@ class ChatPageHandler(tornado.web.RequestHandler):
 class ConfigHandler(tornado.web.RequestHandler):
     def get(self):
         cfg_path = os.path.join(os.path.dirname(__file__), "config", "config.json")
+        proto = self.request.headers.get("X-Forwarded-Proto") or getattr(self.request, "protocol", "http")
+        ws_scheme = "wss" if str(proto).lower() == "https" else "ws"
+        current = f"{ws_scheme}://{self.request.host}/ws"
+        servers = []
         if os.path.exists(cfg_path):
-            with open(cfg_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                servers = list(data.get("servers") or [])
+            except Exception:
+                servers = []
+        if not servers:
+            servers = [current]
         else:
-            data = {"servers": [f"ws://{self.request.host}/ws"]}
+            cleaned = []
+            for s in servers:
+                try:
+                    u = str(s or "").strip()
+                except Exception:
+                    u = ""
+                if not u:
+                    continue
+                if "localhost" in u or "127.0.0.1" in u:
+                    continue
+                cleaned.append(u)
+            if current not in cleaned:
+                cleaned.insert(0, current)
+            servers = cleaned
+        out = {"servers": servers}
         self.set_header("Content-Type", "application/json; charset=utf-8")
-        self.write(tornado.escape.json_encode(data))
+        self.write(tornado.escape.json_encode(out))
 
 class UsersHandler(tornado.web.RequestHandler):
     def get(self):
@@ -193,13 +217,13 @@ def make_bot_reply(txt):
     if txt.startswith("@成小理"):
         return None
     if txt.startswith("@音乐一下"):
-        return "音乐功能接口预留，当前仅占位响应"
+        return None
     if txt.startswith("@电影"):
         return None
     if txt.startswith("@天气"):
-        return "天气功能接口预留，当前仅占位响应"
+        return None
     if txt.startswith("@新闻"):
-        return "新闻功能接口预留，当前仅占位响应"
+        return None
     if txt.startswith("@小视频"):
         return "小视频功能接口预留，当前仅占位响应"
     return None
@@ -253,6 +277,13 @@ class ChatWebSocket(tornado.websocket.WebSocketHandler):
                         c.write_message(tornado.escape.json_encode(bot_msg))
                     except Exception:
                         pass
+            if text.strip().startswith("@音乐一下"):
+                tornado.ioloop.IOLoop.current().spawn_callback(handle_music_request, nick)
+            if text.strip().startswith("@天气"):
+                city = extract_city(text)
+                tornado.ioloop.IOLoop.current().spawn_callback(handle_weather_request, nick, city)
+            if text.strip().startswith("@新闻"):
+                tornado.ioloop.IOLoop.current().spawn_callback(handle_news_request, nick)
 
     def on_close(self):
         clients.discard(self)
@@ -269,6 +300,7 @@ class ChatWebSocket(tornado.websocket.WebSocketHandler):
 def make_app():
     settings = {
         "static_path": os.path.join(os.path.dirname(__file__), "static"),
+        "xheaders": True,
     }
     return tornado.web.Application([
         (r"/", MainHandler),
@@ -281,6 +313,108 @@ def make_app():
         (r"/ws", ChatWebSocket),
         (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": settings["static_path"]}),
     ], **settings)
+
+async def handle_music_request(nick: str):
+    url = "https://v2.xxapi.cn/api/randomkuwo"
+    client = tornado.httpclient.AsyncHTTPClient()
+    try:
+        req = tornado.httpclient.HTTPRequest(url, method="GET", headers={"User-Agent": "xiaoxiaoapi/1.0.0"}, request_timeout=30)
+        resp = await client.fetch(req, raise_error=False)
+        if resp.code != 200:
+            return
+        js = json.loads(resp.body.decode("utf-8", errors="ignore"))
+        d = js.get("data") or {}
+        name = (d.get("name") or "").strip()
+        singer = (d.get("singer") or "").strip()
+        image = (d.get("image") or "").strip()
+        src = (d.get("url") or "").strip()
+        for v in ("`", "\"", "'"):
+            image = image.strip(v)
+            src = src.strip(v)
+        if not src:
+            return
+        msg = {"type": "music", "nick": nick, "name": name, "singer": singer, "image": image, "url": src}
+        for c in list(clients):
+            try:
+                c.write_message(tornado.escape.json_encode(msg))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+def extract_city(txt: str) -> str:
+    s = txt.strip()
+    b = s.find("[")
+    if b != -1:
+        e = s.find("]", b + 1)
+        if e != -1:
+            return s[b + 1:e].strip()
+    return s.replace("@天气", "").strip()
+
+async def handle_weather_request(nick: str, city: str):
+    key = os.environ.get("WEATHER_API_KEY", "c2db36150a17a5f9")
+    base = "https://v2.xxapi.cn/api/weather"
+    if not city:
+        return
+    q = f"{base}?city={tornado.escape.url_escape(city)}&key={tornado.escape.url_escape(key)}"
+    client = tornado.httpclient.AsyncHTTPClient()
+    try:
+        req = tornado.httpclient.HTTPRequest(q, method="GET", headers={"User-Agent": "xiaoxiaoapi/1.0.0"}, request_timeout=30)
+        resp = await client.fetch(req, raise_error=False)
+        if resp.code != 200:
+            return
+        js = json.loads(resp.body.decode("utf-8", errors="ignore"))
+        if js.get("code") != 200:
+            return
+        d = js.get("data") or {}
+        city_name = (d.get("city") or city).strip()
+        items = d.get("data") or []
+        days = []
+        for it in items:
+            days.append({
+                "date": (it.get("date") or "").strip(),
+                "temperature": (it.get("temperature") or "").strip(),
+                "weather": (it.get("weather") or "").strip(),
+                "wind": (it.get("wind") or "").strip(),
+                "air_quality": (it.get("air_quality") or "").strip(),
+            })
+        msg = {"type": "weather", "nick": nick, "city": city_name, "days": days}
+        for c in list(clients):
+            try:
+                c.write_message(tornado.escape.json_encode(msg))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+async def handle_news_request(nick: str):
+    url = "https://v2.xxapi.cn/api/weibohot"
+    client = tornado.httpclient.AsyncHTTPClient()
+    try:
+        req = tornado.httpclient.HTTPRequest(url, method="GET", headers={"User-Agent": "xiaoxiaoapi/1.0.0"}, request_timeout=30)
+        resp = await client.fetch(req, raise_error=False)
+        if resp.code != 200:
+            return
+        js = json.loads(resp.body.decode("utf-8", errors="ignore"))
+        if js.get("code") != 200:
+            return
+        arr = js.get("data") or []
+        if not arr:
+            return
+        it = arr[0]
+        title = (it.get("title") or "").strip()
+        hot = (it.get("hot") or "").strip()
+        link = (it.get("url") or "").strip()
+        for v in ("`", "\"", "'"):
+            link = link.strip(v)
+        msg = {"type": "news", "nick": nick, "title": title, "hot": hot, "url": link}
+        for c in list(clients):
+            try:
+                c.write_message(tornado.escape.json_encode(msg))
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8888"))
