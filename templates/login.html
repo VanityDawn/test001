@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OODaiP聊天室 - 登录</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-title">OODaiP聊天室</div>
+      <div class="form-row">
+        <label>昵称</label>
+        <input id="nick" type="text" placeholder="请输入昵称">
+      </div>
+      <div class="form-row">
+        <label>密码</label>
+        <input id="pwd" type="password" placeholder="固定密码：123456">
+      </div>
+      <div class="form-row">
+        <label>服务器</label>
+        <select id="server"></select>
+      </div>
+      <button id="loginBtn" class="primary">登录</button>
+      <div id="loginMsg" class="msg"></div>
+    </div>
+  </div>
+  <script src="/static/js/jquery-3.7.1.min.js"></script>
+  <script src="/static/js/login.js"></script>
+</body>
+</html>

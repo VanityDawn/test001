@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OODaiP聊天室</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="chat-body">
+  <div class="chat-wrap">
+    <header class="chat-header">
+      <div class="chat-title">OODaiP聊天室</div>
+      <div class="chat-actions">
+        <button id="historyBtn" class="ghost">历史记录</button>
+        <button id="exitBtn" class="danger">退出</button>
+      </div>
+    </header>
+    <main class="chat-main">
+      <div id="messages" class="messages"></div>
+    </main>
+    <footer class="chat-input">
+      <button id="emojiBtn" class="ghost">😀</button>
+      <div id="emojiPanel" class="emoji-panel hidden"></div>
+      <input id="msgInput" type="text" placeholder="输入消息，支持@成小理 @音乐一下 @电影 @天气 @新闻 @小视频">
+      <button id="sendBtn" class="primary">发送</button>
+    </footer>
+  </div>
+  <script src="/static/js/jquery-3.7.1.min.js"></script>
+  <script src="/static/js/chat.js"></script>
+</body>
+</html>
