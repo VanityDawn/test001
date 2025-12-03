@@ -71,7 +71,7 @@ class AIStreamHandler(tornado.web.RequestHandler):
         self.set_header("Cache-Control", "no-cache")
         self.set_header("Connection", "keep-alive")
         q = self.get_argument("q", default="")
-        api_key = os.environ.get("SILICONFLOW_API_KEY", "sk-azuhmndftogjstwbmcivaajxrtyxpmolwttbgiknvhgrbwwz")
+        api_key = os.environ.get("SILICONFLOW_API_KEY", "sk-ppuvmohpxsrizhgjiydkcjxfkiujjxsgiwegnkqcqhzzvqep")
         model = os.environ.get("SILICONFLOW_MODEL", "Qwen/Qwen2.5-7B-Instruct")
         api_url = os.environ.get("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/chat/completions")
         if not api_key:
@@ -173,7 +173,7 @@ class AITestHandler(tornado.web.RequestHandler):
     async def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         q = self.get_argument("q", default="")
-        api_key = os.environ.get("SILICONFLOW_API_KEY", "sk-azuhmndftogjstwbmcivaajxrtyxpmolwttbgiknvhgrbwwz")
+        api_key = os.environ.get("SILICONFLOW_API_KEY", "sk-ppuvmohpxsrizhgjiydkcjxfkiujjxsgiwegnkqcqhzzvqep")
         model = os.environ.get("SILICONFLOW_MODEL", "Qwen/Qwen2.5-7B-Instruct")
         api_url = os.environ.get("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/chat/completions")
         payload = {
@@ -321,8 +321,23 @@ async def handle_music_request(nick: str):
         req = tornado.httpclient.HTTPRequest(url, method="GET", headers={"User-Agent": "xiaoxiaoapi/1.0.0"}, request_timeout=30)
         resp = await client.fetch(req, raise_error=False)
         if resp.code != 200:
+            bot_msg = {"type": "bot", "nick": "聊天室助手", "text": f"音乐接口错误 {resp.code}"}
+            for c in list(clients):
+                try:
+                    c.write_message(tornado.escape.json_encode(bot_msg))
+                except Exception:
+                    pass
             return
         js = json.loads(resp.body.decode("utf-8", errors="ignore"))
+        if js.get("code") not in (None, 200):
+            msg = (js.get("msg") or "音乐服务繁忙或未返回数据").strip()
+            bot_msg = {"type": "bot", "nick": "聊天室助手", "text": msg}
+            for c in list(clients):
+                try:
+                    c.write_message(tornado.escape.json_encode(bot_msg))
+                except Exception:
+                    pass
+            return
         d = js.get("data") or {}
         name = (d.get("name") or "").strip()
         singer = (d.get("singer") or "").strip()
@@ -332,6 +347,12 @@ async def handle_music_request(nick: str):
             image = image.strip(v)
             src = src.strip(v)
         if not src:
+            bot_msg = {"type": "bot", "nick": "聊天室助手", "text": "未返回可播放的音乐地址"}
+            for c in list(clients):
+                try:
+                    c.write_message(tornado.escape.json_encode(bot_msg))
+                except Exception:
+                    pass
             return
         msg = {"type": "music", "nick": nick, "name": name, "singer": singer, "image": image, "url": src}
         for c in list(clients):
@@ -340,7 +361,12 @@ async def handle_music_request(nick: str):
             except Exception:
                 pass
     except Exception:
-        pass
+        bot_msg = {"type": "bot", "nick": "聊天室助手", "text": "音乐服务异常或网络错误"}
+        for c in list(clients):
+            try:
+                c.write_message(tornado.escape.json_encode(bot_msg))
+            except Exception:
+                pass
 
 def extract_city(txt: str) -> str:
     s = txt.strip()
