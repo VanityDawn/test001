@@ -35,6 +35,12 @@ class ConfigHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write(tornado.escape.json_encode(data))
 
+class UsersHandler(tornado.web.RequestHandler):
+    def get(self):
+        users = [{"nick": n, "online": True} for n in nicknames.values() if n]
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write(tornado.escape.json_encode({"list": users}))
+
 class AIStreamHandler(tornado.web.RequestHandler):
     async def get(self):
         self.set_header("Content-Type", "text/event-stream")
@@ -198,6 +204,15 @@ def make_bot_reply(txt):
         return "小视频功能接口预留，当前仅占位响应"
     return None
 
+def broadcast_users():
+    users = [{"nick": n, "online": True} for n in nicknames.values() if n]
+    msg = {"type": "users", "list": users}
+    for c in list(clients):
+        try:
+            c.write_message(tornado.escape.json_encode(msg))
+        except Exception:
+            pass
+
 class ChatWebSocket(tornado.websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
@@ -220,6 +235,7 @@ class ChatWebSocket(tornado.websocket.WebSocketHandler):
                     c.write_message(tornado.escape.json_encode(msg))
                 except Exception:
                     pass
+            broadcast_users()
         elif t == "chat":
             nick = nicknames.get(self, "")
             text = data.get("text", "")
@@ -248,6 +264,7 @@ class ChatWebSocket(tornado.websocket.WebSocketHandler):
                     c.write_message(tornado.escape.json_encode(msg))
                 except Exception:
                     pass
+        broadcast_users()
 
 def make_app():
     settings = {
@@ -258,6 +275,7 @@ def make_app():
         (r"/login", LoginHandler),
         (r"/chat", ChatPageHandler),
         (r"/config", ConfigHandler),
+        (r"/users", UsersHandler),
         (r"/ai/test", AITestHandler),
         (r"/ai/sse", AIStreamHandler),
         (r"/ws", ChatWebSocket),

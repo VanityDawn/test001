@@ -8,6 +8,11 @@
 </head>
 <body class="chat-body">
   <div class="chat-wrap">
+    <aside class="chat-side">
+      <div class="chat-side-title">在线用户</div>
+      <div id="userList" class="users"></div>
+    </aside>
+    <div class="chat-col">
     <header class="chat-header">
       <div class="chat-title">OODaiP聊天室</div>
       <div class="chat-actions">
@@ -24,6 +29,7 @@
       <input id="msgInput" type="text" placeholder="输入消息，支持@成小理 @音乐一下 @电影 @天气 @新闻 @小视频">
       <button id="sendBtn" class="primary">发送</button>
     </footer>
+    </div>
   </div>
   <script src="/static/js/jquery-3.7.1.min.js"></script>
   <script src="/static/js/chat.js"></script>
